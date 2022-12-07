@@ -24,13 +24,26 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: logger
-        image: logger:latest
+        image: logger:1
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: varlog
           mountPath: /var/log
         - name: varlibdockercontainers
           mountPath: /var/lib/docker/containers
+        env:
+        - name: STORAGE_ACCOUNT_NAME
+          value: storageaccountrgmpna925
+        - name: STORAGE_ACCOUNT_URL_SUFFIX
+          value: blob.core.windows.net
+        - name: STORAGE_ACCOUNT_CONTAINER_NAME
+          value: akslogs
+        - name: STORAGE_ACCOUNT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azstoragecreds
+              key: storagekey
+              optional: false
       volumes:
       - name: varlog
         hostPath:
