@@ -12,6 +12,7 @@ const path = require("path");
 
 // Azure Storage Account information
 const { BlobServiceClient, StorageSharedKeyCredential } = require("@azure/storage-blob");
+const { isNullOrUndefined } = require("util");
 const account = process.env.STORAGE_ACCOUNT_NAME;
 const accountUrl = `https://${account}.${process.env.STORAGE_ACCOUNT_URL_SUFFIX}`
 const accountKey = process.env.STORAGE_ACCOUNT_KEY;
@@ -24,9 +25,14 @@ const blobServiceClient = new BlobServiceClient(accountUrl, sharedKeyCredential)
 const containerName = process.env.STORAGE_ACCOUNT_CONTAINER_NAME;
 let containerClient = null;
 
+
+let watchContainers = process.env.WATCH_CONTAINERS?.split(",").filter(el => el != "");
+watchContainers.forEach(el => el.toLowerCase().trim());
+let filterByMessage = process.env.WATCH_MESSAGE_FILTERS?.split(",").filter(el => el != "");
+filterByMessage.forEach(el => el.toLowerCase().trim());
+
 // The directory on the Kubernetes node that contains log files for pods running on the node.
 const LOG_FILES_DIRECTORY = "/var/log/containers";
-
 
 // A glob that identifies the log files we'd like to track.
 const LOG_FILES_GLOB = [
@@ -47,6 +53,22 @@ async function onLogLine(containerName, blockBlobClient, line) {
     // At this point you want to forward your logs to someother log collector for aggregration.
     // For this simple example we'll just print them as output from this pod.
     //
+
+    let shouldLog = true;
+    if (filterByMessage !== undefined) {
+        if (Array.isArray(filterByMessage) && filterByMessage.length > 0) {
+            shouldLog = false;
+            filterByMessage.forEach(element => {
+                if (line.toLowerCase().includes(element)) {
+                    shouldLog = true;
+                }
+            });
+        }
+    }
+
+    if (shouldLog === false)
+        return;
+
     const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
     const isError = data.stream === "stderr"; // Is the output an error?
     const level = isError ? "error" : "info";
@@ -65,12 +87,17 @@ async function trackFile(logFilePath) {
     const logFileName = path.basename(logFilePath);
     const containerName = logFileName.split("_")[0]; // Super simple way to extract the container name from the log filename.
 
+    if (watchContainers !== undefined) {
+        if (Array.isArray(watchContainers) && watchContainers.length > 0 && watchContainers.some(watchEl => containerName.includes(watchEl)) !== true)
+            return;
+    }
+
     // Setup client for azure storage account
     const destBlobName = `${containerName}.log`
     const blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
     await blockBlobClient.createIfNotExists();
     logFileTail.on("line", async line => await onLogLine(containerName, blockBlobClient, line));
-    
+
     //Output tracking info
     console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);
 }
@@ -106,6 +133,8 @@ async function main() {
         await containerClient.create();
     }
 
+    console.log("Watch Containers: " + watchContainers + ` (${watchContainers.length})`);
+    console.log("Message Filters: " + filterByMessage + ` (${filterByMessage.length})`);
     //
     // Start tracking initial log files.
     //
@@ -124,5 +153,3 @@ main()
         console.error("Failed to start!");
         console.error(err && err.stack || err);
     });
-
-
