@@ -1,33 +1,21 @@
 #
-# This file is a deploys the Loggy Daemonset to a Kubernetes cluster.
-# Loggy is a microservice that runs on every node in the cluster to aggregate output from the pods on the node.
-#
-# Deploy this to your Kubernetes cluster like this:
-#   
-#   kubectl apply -f ./scripts/kubernetes/loggy.yaml
-#
-# To see what pods it has created:
-#   
-#   kubectl --namespace kube-system get pods
-#
-# Pods created will start with the name "loggy".
-#
+# This file is a deploys the Logger Daemonset to a Kubernetes cluster.
 
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: loggy
+  name: logger
   namespace: kube-system
   labels:
-    test: loggy
+    service: logger
 spec:
   selector:
     matchLabels:
-      test: loggy
+      service: logger
   template:
     metadata:
       labels:
-       test: loggy
+       service: logger
     spec:
       tolerations:
       - key: "node-role.kubernetes.io/control-plane"
@@ -35,8 +23,8 @@ spec:
       - key: "node-role.kubernetes.io/master"
         effect: "NoSchedule"
       containers:
-      - name: loggy
-        image: docker.io/loggy:latest
+      - name: logger
+        image: logger:latest
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: varlog
