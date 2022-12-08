@@ -25,6 +25,7 @@ const blobServiceClient = new BlobServiceClient(accountUrl, sharedKeyCredential)
 const containerName = process.env.STORAGE_ACCOUNT_CONTAINER_NAME;
 let containerClient = null;
 
+const storeByDate = process.env.STORE_BY_DATE === "true";
 
 let watchContainers = process.env.WATCH_CONTAINERS?.split(",").filter(el => el != "");
 watchContainers.forEach(el => el.toLowerCase().trim());
@@ -44,11 +45,12 @@ const LOG_FILES_GLOB = [
 // Map of log files currently being tracked.
 //
 const trackedFiles = {};
+const blobClients =  new Object();
 
 //
 // This function is called when a line of output is received from any container on the node.
 //
-async function onLogLine(containerName, blockBlobClient, line) {
+async function onLogLine(containerName, line) {
     //
     // At this point you want to forward your logs to someother log collector for aggregration.
     // For this simple example we'll just print them as output from this pod.
@@ -69,6 +71,18 @@ async function onLogLine(containerName, blockBlobClient, line) {
     if (shouldLog === false)
         return;
 
+    let blockBlobClient = blobClients[containerName];
+
+    if (storeByDate === true) {
+        let expectedDestBlobName = `${getDateString()}/${containerName}`;
+        if (blockBlobClient.name !== expectedDestBlobName) {
+            console.log(`Cycling log file from ${blockBlobClient.name} to ${expectedDestBlobName}`);
+            blockBlobClient = containerClient.getAppendBlobClient(expectedDestBlobName);
+            await blockBlobClient.createIfNotExists();
+            blobClients[containerName] = blockBlobClient;
+        }
+    }
+
     const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
     const isError = data.stream === "stderr"; // Is the output an error?
     const level = isError ? "error" : "info";
@@ -78,6 +92,10 @@ async function onLogLine(containerName, blockBlobClient, line) {
     await blockBlobClient.appendBlock(content, content.length);
 }
 
+function getDateString(){
+    let today = new Date();
+    return `${today.getUTCFullYear()}-${today.getUTCMonth()}-${today.getUTCDate().toString().padStart(2, '0')}`;
+}
 //
 // Commence tracking a particular log file.
 //
@@ -93,10 +111,15 @@ async function trackFile(logFilePath) {
     }
 
     // Setup client for azure storage account
-    const destBlobName = `${containerName}.log`
-    const blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
+    let destBlobName = `${containerName}.log`
+    if (storeByDate === true) {
+        destBlobName = `${getDateString()}/${containerName}`;
+    }
+
+    let blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
     await blockBlobClient.createIfNotExists();
-    logFileTail.on("line", async line => await onLogLine(containerName, blockBlobClient, line));
+    blobClients[containerName] = blockBlobClient;
+    logFileTail.on("line", async line => await onLogLine(containerName, line));
 
     //Output tracking info
     console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);

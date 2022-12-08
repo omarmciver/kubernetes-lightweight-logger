@@ -8,6 +8,7 @@
 		"STORAGE_ACCOUNT_URL_SUFFIX": "blob.core.windows.net",
 		"STORAGE_ACCOUNT_CONTAINER_NAME": "akslogs",
 		"STORAGE_ACCOUNT_KEY": "<insertkeyherebutdontcommit!>",
+		"STORE_BY_DATE": "true",
 		"WATCH_CONTAINERS":"",
 		"WATCH_MESSAGE_FILTERS" : ""
 	}

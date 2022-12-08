@@ -38,6 +38,8 @@ spec:
           value: blob.core.windows.net
         - name: STORAGE_ACCOUNT_CONTAINER_NAME
           value: akslogs
+        - name: STORE_BY_DATE
+          value: "true"
         - name: WATCH_CONTAINERS
           value: ""
         - name: WATCH_MESSAGE_FILTERS
