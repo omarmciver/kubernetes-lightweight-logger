@@ -25,7 +25,6 @@ spec:
       containers:
       - name: logger
         image: omarmciver/lightweight-aks-container-logger:latest
-        imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: varlog
           mountPath: /var/log

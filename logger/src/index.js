@@ -45,7 +45,7 @@ const LOG_FILES_GLOB = [
 // Map of log files currently being tracked.
 //
 const trackedFiles = {};
-const blobClients =  new Object();
+const blobClients = new Object();
 
 //
 // This function is called when a line of output is received from any container on the node.
@@ -83,16 +83,26 @@ async function onLogLine(containerName, line) {
         }
     }
 
-    const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
-    const isError = data.stream === "stderr"; // Is the output an error?
-    const level = isError ? "error" : "info";
+    try {
+        const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
+        const isError = data.stream === "stderr"; // Is the output an error?
+        const level = isError ? "error" : "info";
 
-    //Write to storage account....
-    const content = `${containerName}/[${level}] : ${data.log}`;
-    await blockBlobClient.appendBlock(content, content.length);
+        //Write to storage account....
+        const content = `${containerName}/[${level}] : ${data.log}`;
+        await blockBlobClient.appendBlock(content, content.length);
+    } catch (error) {
+        const isError = line.toLowerCase().includes("error"); // Is the output an error?
+        const level = isError ? "error" : "info";
+
+        //Write to storage account....
+        const content = `${containerName}/[${level}] : ${line}`;
+        await blockBlobClient.appendBlock(content, content.length);
+    }
+
 }
 
-function getDateString(){
+function getDateString() {
     let today = new Date();
     return `${today.getUTCFullYear()}-${today.getUTCMonth()}-${today.getUTCDate().toString().padStart(2, '0')}`;
 }
