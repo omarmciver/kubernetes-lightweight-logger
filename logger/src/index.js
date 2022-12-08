@@ -74,7 +74,7 @@ async function onLogLine(containerName, line) {
     let blockBlobClient = blobClients[containerName];
 
     if (storeByDate === true) {
-        let expectedDestBlobName = `${getDateString()}/${containerName}`;
+        let expectedDestBlobName = `${getDateString()}/${containerName}.log`;
         if (blockBlobClient.name !== expectedDestBlobName) {
             console.log(`Cycling log file from ${blockBlobClient.name} to ${expectedDestBlobName}`);
             blockBlobClient = containerClient.getAppendBlobClient(expectedDestBlobName);
@@ -123,7 +123,7 @@ async function trackFile(logFilePath) {
     // Setup client for azure storage account
     let destBlobName = `${containerName}.log`
     if (storeByDate === true) {
-        destBlobName = `${getDateString()}/${containerName}`;
+        destBlobName = `${getDateString()}/${containerName}.log`;
     }
 
     let blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
