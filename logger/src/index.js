@@ -96,7 +96,7 @@ async function onLogLine(containerName, line) {
         const level = isError ? "error" : "info";
 
         //Write to storage account....
-        const content = `${containerName}/[${level}] : ${line}`;
+        const content = `${containerName}/[${level}] : ${line}\n`;
         await blockBlobClient.appendBlock(content, content.length);
     }
 
