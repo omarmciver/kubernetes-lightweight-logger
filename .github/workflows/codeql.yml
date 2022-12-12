@@ -9,18 +9,25 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
-name: "CodeQL"
+name: "Build Workflow"
 
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '.devcontainer/**'
+      - '.github/**'
+      - '.kubernetes/**'
+      - '**/*.MD'
+      - '**/*.md'
+
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
 
-
 env:
   BUILD_VERSION: "${{github.run_number}}"
+  BUILD_AND_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
 jobs:
   analyze:
@@ -76,18 +83,22 @@ jobs:
         category: "/language:${{matrix.language}}"
 
     - name: Set up QEMU
+      if: ${{ end.BUILD_AND_PUSH }}
       uses: docker/setup-qemu-action@v1
 
     - name: Set up Docker Buildx
+      if: ${{ end.BUILD_AND_PUSH }}
       uses: docker/setup-buildx-action@v1
 
     - name: Login to DockerHub
+      if: ${{ end.BUILD_AND_PUSH }}
       uses: docker/login-action@v1
       with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PAT }}
 
     - name: Build and Push Image
+      if: ${{ end.BUILD_AND_PUSH }}
       id: buildandpush
       uses: docker/build-push-action@v2
       with:
