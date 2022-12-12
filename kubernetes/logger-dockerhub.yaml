@@ -26,6 +26,13 @@ spec:
       - name: logger
         image: omarmciver/lightweight-aks-container-logger:latest
         imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "5m"
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
         volumeMounts:
         - name: varlog
           mountPath: /var/log
