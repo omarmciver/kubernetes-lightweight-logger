@@ -68,11 +68,9 @@ async function onLogLine(containerName, line) {
         return;
 
     // If we are partitioning the storage by the date, ensure we factor this in to the expected blob name
-    let blockBlobClient = await ensureBlobAppendClient();
+    let blockBlobClient = await ensureBlobAppendClient(containerName);
 
     await writeLogLine(blockBlobClient, containerName, line);
-
-
 }
 
 // This function is called to actually write a line to a log file in the Azure storage account
