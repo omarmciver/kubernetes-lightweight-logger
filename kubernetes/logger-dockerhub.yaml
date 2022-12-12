@@ -25,6 +25,7 @@ spec:
       containers:
       - name: logger
         image: omarmciver/lightweight-aks-container-logger:latest
+        imagePullPolicy: Always
         volumeMounts:
         - name: varlog
           mountPath: /var/log
@@ -36,11 +37,13 @@ spec:
         - name: STORAGE_ACCOUNT_URL_SUFFIX
           value: blob.core.windows.net
         - name: STORAGE_ACCOUNT_CONTAINER_NAME
-          value: newakslogs
+          value: akslogger
         - name: STORE_BY_DATE
           value: 'true'
         - name: WATCH_CONTAINERS
+          value: ''
         - name: WATCH_MESSAGE_FILTERS
+          value: ''
         - name: STORAGE_ACCOUNT_KEY
           valueFrom:
             secretKeyRef:
