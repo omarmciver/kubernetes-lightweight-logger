@@ -29,8 +29,8 @@ env:
   BUILD_AND_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
 jobs:
-  analyze:
-    name: Analyze
+  build:
+    name: Build
     runs-on: ubuntu-latest
     permissions:
       actions: read
