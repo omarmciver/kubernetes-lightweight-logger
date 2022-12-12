@@ -24,7 +24,7 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: logger
-        image: logger:1
+        image: logger:local_build
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: varlog
