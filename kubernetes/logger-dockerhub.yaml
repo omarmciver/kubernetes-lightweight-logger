@@ -36,13 +36,11 @@ spec:
         - name: STORAGE_ACCOUNT_URL_SUFFIX
           value: blob.core.windows.net
         - name: STORAGE_ACCOUNT_CONTAINER_NAME
-          value: akslogs
+          value: newakslogs
         - name: STORE_BY_DATE
-          value: "true"
+          value: 'true'
         - name: WATCH_CONTAINERS
-          value: ""
         - name: WATCH_MESSAGE_FILTERS
-          value: ""
         - name: STORAGE_ACCOUNT_KEY
           valueFrom:
             secretKeyRef:

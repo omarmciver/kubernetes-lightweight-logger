@@ -1,5 +1,6 @@
 {
   "name": "loggy",
+  "type": "module",
   "version": "1.0.0",
   "description": "A Node.js-based microservice for log aggregation on Kubernetes.",
   "main": "./src/index.js",

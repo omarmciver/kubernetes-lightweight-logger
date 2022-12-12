@@ -6,11 +6,12 @@
 'use strict';
 
 // Dependencies
-const tail = require("tail");
-const globby = require("globby");
-const chokidar = require("chokidar");
-const path = require("path");
-const { BlobServiceClient, StorageSharedKeyCredential } = require("@azure/storage-blob");
+import * as tail from "tail";
+import * as chokidar from "chokidar";
+import * as path from "path";
+import { globby } from "globby";
+import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
+
 
 // Azure Storage Account information and logging settings
 const account = process.env.STORAGE_ACCOUNT_NAME;
