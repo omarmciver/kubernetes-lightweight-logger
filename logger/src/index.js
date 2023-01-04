@@ -118,7 +118,7 @@ async function ensureBlobAppendClient(containerName) {
 // This function returns the date today (UTC) in the correct format for the blob name path
 function getDateString() {
     let today = new Date();
-    return `${today.getUTCFullYear()}-${today.getUTCMonth()}-${today.getUTCDate().toString().padStart(2, '0')}`;
+    return `${today.getUTCFullYear()}-${(today.getUTCMonth()+1).toString().padStart(2, '0')}-${today.getUTCDate().toString().padStart(2, '0')}`;
 }
 
 // Commence tracking a particular log file.
