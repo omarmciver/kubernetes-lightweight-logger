@@ -22,7 +22,7 @@
   "dependencies": {
     "@azure/storage-blob": "^12.13.0",
     "chokidar": "^3.3.0",
-    "globby": "^13.1.2",
+    "globby": "^13.2.0",
     "tail": "^2.2.6"
   },
   "devDependencies": {
