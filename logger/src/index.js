@@ -60,11 +60,12 @@ async function uploadLogBatch(containerName) {
         blockBlobClient.appendBlock(batchContent, batchContent.length)
             .then(() => {
                 console.log(`Uploaded batch of ${batch.length} lines for container ${containerName}`);
+                logBatches[containerName].length = 0;
             })
             .catch((error) => {
                 console.error('Failed to upload batch:', error);
+                logBatches[containerName].length = 0;
             });
-        logBatches[containerName].length = 0;
     }
 }
 
