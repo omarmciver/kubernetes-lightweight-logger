@@ -45,42 +45,35 @@ const trackedFiles = {};
 const blobClients = new Object();
 
 // Define batch-related variables
-const logBatch = [];
+const logBatches = {};
 const batchUploadPeriod = process.env.BATCH_LOG_UPLOAD_TIME_SECONDS && (parseInt(process.env.BATCH_LOG_UPLOAD_TIME_SECONDS) * 1000) || 60000; // 1 minute in milliseconds
 
 // Timer function to upload log lines in batches
-async function uploadLogBatch() {
-    if (logBatch.length === 0) {
-        return;
+async function uploadLogBatch(containerName) {
+    const batch = logBatches[containerName];
+    if (batch && batch.length > 0) {
+        await ensureBlobAppendClient(containerName);
+        const blockBlobClient = blobClients[containerName];
+        const batchContent = batch.map(({ line }) => line).join('\n');
+
+        // Upload the batch content to Azure Blob Storage using writeLogLine
+        blockBlobClient.appendBlock(batchContent, batchContent.length)
+            .then(() => {
+                console.log(`Uploaded batch of ${batch.length} lines for container ${containerName}`);
+            })
+            .catch((error) => {
+                console.error('Failed to upload batch:', error);
+            });
+        logBatches[containerName].length = 0;
     }
-
-    const containerName = logBatch[0].containerName; // Assuming all log lines in the batch belong to the same container
-    await ensureBlobAppendClient(containerName);
-    const blockBlobClient = blobClients[containerName];
-
-    const batchContent = logBatch.map(({ line }) => line).join('\n');
-
-    // Upload the batch content to Azure Blob Storage using writeLogLine
-    writeLogLine(blockBlobClient, containerName, batchContent)
-        .then(() => {
-            // Clear the batch after successful upload
-            console.log(`Uploaded batch of ${logBatch.length} lines for container ${containerName}`);
-            logBatch.length = 0;
-
-        })
-        .catch((error) => {
-            console.error('Failed to upload batch:', error);
-        });
 }
-
-// Periodically upload log batches
-setInterval(async () => {
-    await uploadLogBatch();
-}, batchUploadPeriod);
 
 // This function is called when a line of output is received from any container on the node.
 async function onLogLine(containerName, line) {
-
+    // Initialize container-specific batch if not existent
+    if (!logBatches[containerName]) {
+        logBatches[containerName] = [];
+    }
     // Flag to track if we want to log the line based upon 'filtering by message' configuration
     let shouldLog = true;
 
@@ -96,36 +89,27 @@ async function onLogLine(containerName, line) {
         }
     }
 
-    // If the line did not meet the filter, skip logging this line.
-    if (shouldLog === false)
-        return;
+    if (shouldLog) {
+        try {
+            const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
+            const isError = data.stream === "stderr"; // Is the output an error?
+            const level = isError ? "error" : "info";
 
-    // Push the log line to the batch
-    logBatch.push({ containerName, line });
+            // Write to storage account....
+            const content = `${containerName}/[${level}] : ${data.log}`;
+            logBatches[containerName].push({ containerName, content });
+        } catch (error) {
+            const isError = line.toLowerCase().includes("error"); // Is the output an error?
+            const level = isError ? "error" : "info";
 
-    // Ensure we don't exceed a certain batch size (optional)
-    if (logBatch.length >= 50000) {
-        uploadLogBatch(); // Upload the batch if it reaches a certain size
-    }
-}
-
-// This function is called to actually write a line to a log file in the Azure storage account
-async function writeLogLine(blockBlobClient, containerName, line) {
-    try {
-        const data = JSON.parse(line); // The line is a JSON object so parse to extract relevant data.
-        const isError = data.stream === "stderr"; // Is the output an error?
-        const level = isError ? "error" : "info";
-
-        // Write to storage account....
-        const content = `${containerName}/[${level}] : ${data.log}`;
-        await blockBlobClient.appendBlock(content, content.length);
-    } catch (error) {
-        const isError = line.toLowerCase().includes("error"); // Is the output an error?
-        const level = isError ? "error" : "info";
-
-        // Write to storage account....
-        const content = `${containerName}/[${level}] : ${line}\n`;
-        await blockBlobClient.appendBlock(content, content.length);
+            // Write to storage account....
+            const content = `${containerName}/[${level}] : ${line}\n`;
+            logBatches[containerName].push({ containerName, content });
+        }
+        // Check batch size for this specific container
+        if (logBatches[containerName].length >= 50000) {
+            uploadLogBatch(containerName);
+        }
     }
 }
 
@@ -182,13 +166,17 @@ async function trackFile(logFilePath) {
 
     // Output tracking info
     console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);
+    // Periodically upload log batches
+    setInterval(async () => {
+        await uploadLogBatch(containerName);
+    }, batchUploadPeriod);
 }
 
 // Identify log files to be tracked and start tracking them.
 async function trackFiles() {
     const logFilePaths = await globby(LOG_FILES_GLOB);
     for (const logFilePath of logFilePaths) {
-        if (trackedFiles[logFilePaths]) {
+        if (trackedFiles[logFilePath]) {
             continue; // Already tracking this file, ignore it now.
         }
         await trackFile(logFilePath); // Start tracking this log file we just identified.
