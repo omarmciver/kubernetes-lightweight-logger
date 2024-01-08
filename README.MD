@@ -12,6 +12,8 @@ env:
     value: blob.core.windows.net <or something different if non standard - i.e. gov cloud>
 - name: STORAGE_ACCOUNT_CONTAINER_NAME
     value: <the storage account container name to create / use - multiple clusters? Use a different container name for each! Magic!>
+- name: BATCH_LOG_UPLOAD_TIME_SECONDS
+    value: "60" <or the number of seconds before the latest log updates are uploaded to the storage account>
 - name: STORE_BY_DATE
     value: "true" <or false if you just want one big never ending file per container name>
 - name: WATCH_CONTAINERS

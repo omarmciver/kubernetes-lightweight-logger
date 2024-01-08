@@ -45,6 +45,8 @@ spec:
           value: blob.core.windows.net
         - name: STORAGE_ACCOUNT_CONTAINER_NAME
           value: akslogger
+        - name: BATCH_LOG_UPLOAD_TIME_SECONDS
+          value: "60"
         - name: STORE_BY_DATE
           value: 'true'
         - name: WATCH_CONTAINERS

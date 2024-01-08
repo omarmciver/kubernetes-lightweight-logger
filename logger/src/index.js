@@ -45,6 +45,35 @@ const trackedFiles = {};
 // Map of blob clients currently being appended.
 const blobClients = new Object();
 
+// Define batch-related variables
+const logBatch = [];
+const batchUploadPeriod = process.env.BATCH_LOG_UPLOAD_TIME_SECONDS && (parseInt(process.env.BATCH_LOG_UPLOAD_TIME_SECONDS) * 1000) || 60000; // 1 minute in milliseconds
+
+// Timer function to upload log lines in batches
+function uploadLogBatch() {
+    if (logBatch.length === 0) {
+        return;
+    }
+
+    const containerName = logBatch[0].containerName; // Assuming all log lines in the batch belong to the same container
+    const blockBlobClient = blobClients[containerName];
+
+    const batchContent = logBatch.map(({ line }) => line).join('\n');
+
+    // Upload the batch content to Azure Blob Storage
+    blockBlobClient.appendBlock(batchContent, batchContent.length)
+        .then(() => {
+            // Clear the batch after successful upload
+            logBatch.length = 0;
+        })
+        .catch((error) => {
+            console.error('Failed to upload batch:', error);
+        });
+}
+
+// Periodically upload log batches
+setInterval(uploadLogBatch, batchUploadPeriod);
+
 // This function is called when a line of output is received from any container on the node.
 async function onLogLine(containerName, line) {
 
@@ -67,10 +96,13 @@ async function onLogLine(containerName, line) {
     if (shouldLog === false)
         return;
 
-    // If we are partitioning the storage by the date, ensure we factor this in to the expected blob name
-    let blockBlobClient = await ensureBlobAppendClient(containerName);
+    // Push the log line to the batch
+    logBatch.push({ containerName, line });
 
-    await writeLogLine(blockBlobClient, containerName, line);
+    // Ensure we don't exceed a certain batch size (optional)
+    if (logBatch.length >= 100) {
+        uploadLogBatch(); // Upload the batch if it reaches a certain size
+    }
 }
 
 // This function is called to actually write a line to a log file in the Azure storage account
@@ -118,7 +150,7 @@ async function ensureBlobAppendClient(containerName) {
 // This function returns the date today (UTC) in the correct format for the blob name path
 function getDateString() {
     let today = new Date();
-    return `${today.getUTCFullYear()}-${(today.getUTCMonth()+1).toString().padStart(2, '0')}-${today.getUTCDate().toString().padStart(2, '0')}`;
+    return `${today.getUTCFullYear()}-${(today.getUTCMonth() + 1).toString().padStart(2, '0')}-${today.getUTCDate().toString().padStart(2, '0')}`;
 }
 
 // Commence tracking a particular log file.
