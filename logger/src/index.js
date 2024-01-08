@@ -12,10 +12,9 @@ import * as path from "path";
 import { globby } from "globby";
 import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
 
-
 // Azure Storage Account information and logging settings
 const account = process.env.STORAGE_ACCOUNT_NAME;
-const accountUrl = `https://${account}.${process.env.STORAGE_ACCOUNT_URL_SUFFIX}`
+const accountUrl = `https://${account}.${process.env.STORAGE_ACCOUNT_URL_SUFFIX}`;
 const accountKey = process.env.STORAGE_ACCOUNT_KEY;
 const storeByDate = process.env.STORE_BY_DATE === "true";
 let watchContainers = process.env.WATCH_CONTAINERS?.split(",").filter(el => el != "");
@@ -36,7 +35,7 @@ const LOG_FILES_DIRECTORY = "/var/log/containers";
 
 // A glob that identifies the log files we'd like to track.
 const LOG_FILES_GLOB = [
-    `${LOG_FILES_DIRECTORY}/**/*.log`,                 // Track all log files in the log files diretory.
+    `${LOG_FILES_DIRECTORY}/**/*.log`,                 // Track all log files in the log files directory.
     `!${LOG_FILES_DIRECTORY}/*kube-system*.log`,    // Except... don't track logs for Kubernetes system pods.
 ];
 
@@ -50,21 +49,24 @@ const logBatch = [];
 const batchUploadPeriod = process.env.BATCH_LOG_UPLOAD_TIME_SECONDS && (parseInt(process.env.BATCH_LOG_UPLOAD_TIME_SECONDS) * 1000) || 60000; // 1 minute in milliseconds
 
 // Timer function to upload log lines in batches
-function uploadLogBatch() {
+async function uploadLogBatch() {
     if (logBatch.length === 0) {
         return;
     }
 
     const containerName = logBatch[0].containerName; // Assuming all log lines in the batch belong to the same container
+    await ensureBlobAppendClient(containerName);
     const blockBlobClient = blobClients[containerName];
 
     const batchContent = logBatch.map(({ line }) => line).join('\n');
 
-    // Upload the batch content to Azure Blob Storage
-    blockBlobClient.appendBlock(batchContent, batchContent.length)
+    // Upload the batch content to Azure Blob Storage using writeLogLine
+    writeLogLine(blockBlobClient, containerName, batchContent)
         .then(() => {
             // Clear the batch after successful upload
+            console.log(`Uploaded batch of ${logBatch.length} lines for container ${containerName}`);
             logBatch.length = 0;
+
         })
         .catch((error) => {
             console.error('Failed to upload batch:', error);
@@ -72,12 +74,14 @@ function uploadLogBatch() {
 }
 
 // Periodically upload log batches
-setInterval(uploadLogBatch, batchUploadPeriod);
+setInterval(async () => {
+    await uploadLogBatch();
+}, batchUploadPeriod);
 
 // This function is called when a line of output is received from any container on the node.
 async function onLogLine(containerName, line) {
 
-    //Flag to track if we want to log the line based upon 'filtering by message' configuration
+    // Flag to track if we want to log the line based upon 'filtering by message' configuration
     let shouldLog = true;
 
     // If we have a filter by message list of strings, test if the line contains any of them.
@@ -100,7 +104,7 @@ async function onLogLine(containerName, line) {
     logBatch.push({ containerName, line });
 
     // Ensure we don't exceed a certain batch size (optional)
-    if (logBatch.length >= 100) {
+    if (logBatch.length >= 50000) {
         uploadLogBatch(); // Upload the batch if it reaches a certain size
     }
 }
@@ -112,14 +116,14 @@ async function writeLogLine(blockBlobClient, containerName, line) {
         const isError = data.stream === "stderr"; // Is the output an error?
         const level = isError ? "error" : "info";
 
-        //Write to storage account....
+        // Write to storage account....
         const content = `${containerName}/[${level}] : ${data.log}`;
         await blockBlobClient.appendBlock(content, content.length);
     } catch (error) {
         const isError = line.toLowerCase().includes("error"); // Is the output an error?
         const level = isError ? "error" : "info";
 
-        //Write to storage account....
+        // Write to storage account....
         const content = `${containerName}/[${level}] : ${line}\n`;
         await blockBlobClient.appendBlock(content, content.length);
     }
@@ -137,7 +141,7 @@ async function ensureBlobAppendClient(containerName) {
     }
 
     // Ensure the expected blob name matches the current blob append client
-    // If not, re-create the blob client and upadate the map
+    // If not, re-create the blob client and update the map
     if (blockBlobClient.name !== expectedDestBlobName) {
         console.log(`Cycling log file from ${blockBlobClient.name} to ${expectedDestBlobName}`);
         blockBlobClient = containerClient.getAppendBlobClient(expectedDestBlobName);
@@ -165,7 +169,7 @@ async function trackFile(logFilePath) {
             return;
     }
 
-    // Setup client for azure storage account
+    // Setup client for Azure storage account
     let destBlobName = `${containerName}.log`
     if (storeByDate === true) {
         destBlobName = `${getDateString()}/${containerName}.log`;
@@ -176,7 +180,7 @@ async function trackFile(logFilePath) {
     blobClients[containerName] = blockBlobClient;
     logFileTail.on("line", async line => await onLogLine(containerName, line));
 
-    //Output tracking info
+    // Output tracking info
     console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);
 }
 
@@ -190,7 +194,6 @@ async function trackFiles() {
         await trackFile(logFilePath); // Start tracking this log file we just identified.
     }
 }
-
 
 async function main() {
     // Setup Azure container
