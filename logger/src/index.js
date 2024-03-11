@@ -93,7 +93,11 @@ function watchForNewFiles() {
 
 // Track a log file
 async function trackFile(logFilePath) {
-    const logFileTail = new tail.Tail(logFilePath);
+    const logFileTail = new tail.Tail(logFilePath, {
+        fsWatchOptions: { persistent: true },
+        useWatchFile: true
+    });
+
     trackedFiles[logFilePath] = logFileTail;
     const logFileName = path.basename(logFilePath);
     const containerName = logFileName.split("_")[0];
@@ -108,7 +112,7 @@ async function trackFile(logFilePath) {
         }
     }
 
-    let destBlobName = `${containerName}.log`
+    let destBlobName = `${containerName}.log`;
     if (STORE_BY_DATE) {
         destBlobName = `${getDateString()}/${containerName}.log`;
     }
@@ -118,6 +122,14 @@ async function trackFile(logFilePath) {
     }
 
     logFileTail.on("line", async line => await onLogLine(containerName, line));
+
+    // Handle errors like file not found or file being deleted
+    logFileTail.on("error", error => {
+        console.error(`Error watching file ${logFilePath}: ${error.message}`);
+        uploadLogBatch(containerName).then(() => {
+            delete trackedFiles[logFilePath];
+        });
+    });
 
     console.log(`Tracking container ${containerName} in file ${logFileName} and ${LOG_OUTPUT_DESTINATION === 'LOCAL' ? 'writing' : 'streaming'} to ${destBlobName}`);
 }
