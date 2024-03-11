@@ -96,10 +96,10 @@ async function uploadLogBatch(containerName) {
 
         // Local file system writing
         if (logOutputDestination === "LOCAL" || logOutputDestination === "BOTH") {
-            const localFileName = `${containerName}.log`;
+            const localFileName = `${getDateString}/${containerName}.log`;
             appendToLocalLogFile(localFileName, batchContent)
                 .then(() => {
-                    console.log(`Local File System: Appended ${batch.length} lines for container ${containerName}`);
+                    console.log(`Local File System: Appended ${batch.length} lines for container ${containerName} to ${localFileName}`);
                 })
                 .catch((error) => {
                     console.error('Local File System: Failed to append to file:', error);
