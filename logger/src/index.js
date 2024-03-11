@@ -12,6 +12,7 @@ import * as tail from 'tail';
 import * as chokidar from 'chokidar';
 import { globby } from 'globby';
 import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
+const hostname = require('os').hostname();
 
 
 //Logging destination
@@ -80,6 +81,8 @@ async function uploadLogBatch(containerName) {
     const batch = logBatches[containerName];
     if (batch && batch.length > 0) {
         const batchContent = batch.map(({ content }) => content).join('\n') + '\n';
+        if(batch.length === 0)
+            return;
 
         // Azure Blob upload
         if ((logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') && blobServiceClient) {
@@ -115,6 +118,10 @@ async function onLogLine(containerName, line) {
     // Initialize container-specific batch if not existent
     if (!logBatches[containerName]) {
         logBatches[containerName] = [];
+    }
+    // Check if containerName matches the hostname
+    if (containerName === hostname) {
+        return;
     }
     // Flag to track if we want to log the line based upon 'filtering by message' configuration
     let shouldLog = true;
@@ -189,6 +196,10 @@ async function trackFile(logFilePath) {
     trackedFiles[logFilePath] = logFileTail; // Take note that we are now tracking this file.
     const logFileName = path.basename(logFilePath);
     const containerName = logFileName.split("_")[0]; // Super simple way to extract the container name from the log filename.
+
+    if (containerName === hostname) {
+        return;
+    }
 
     if (watchContainers !== undefined) {
         if (Array.isArray(watchContainers) && watchContainers.length > 0 && watchContainers.some(watchEl => containerName.includes(watchEl)) !== true)
