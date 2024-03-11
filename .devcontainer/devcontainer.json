@@ -4,6 +4,8 @@
 	"name": "Node.js",
 	"image": "mcr.microsoft.com/devcontainers/javascript-node:18-bullseye",
 	"containerEnv": {
+		"LOG_OUTPUT_DESTINATION": "AZURE",
+		"LOCAL_LOG_DIRECTORY": "/kubernetes-logs",
 		"STORAGE_ACCOUNT_NAME": "storageaccountrgmpna925",
 		"STORAGE_ACCOUNT_URL_SUFFIX": "blob.core.windows.net",
 		"STORAGE_ACCOUNT_CONTAINER_NAME": "akslogs",

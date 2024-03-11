@@ -6,20 +6,28 @@ Here are the env vars required to configure this solution:
 
 ```yaml
 env:
-- name: STORAGE_ACCOUNT_NAME
-    value: <what's your storage account name?>
-- name: STORAGE_ACCOUNT_URL_SUFFIX
-    value: blob.core.windows.net <or something different if non standard - i.e. gov cloud>
-- name: STORAGE_ACCOUNT_CONTAINER_NAME
-    value: <the storage account container name to create / use - multiple clusters? Use a different container name for each! Magic!>
+- name: LOG_OUTPUT_DESTINATION
+    value: "AZURE" <or "LOCAL" or "BOTH" - where do you want the logs to go?>
+
+- name: LOCAL_LOG_DIRECTORY
+    value: "/kubernetes-logs" <or wherever you want the logs to be saved locally>
+    
 - name: BATCH_LOG_UPLOAD_TIME_SECONDS
-    value: "60" <or the number of seconds before the latest log updates are uploaded to the storage account>
+    value: "60" <or the number of seconds before the latest log updates are uploaded to the storage account or saved to the local disk>
 - name: STORE_BY_DATE
     value: "true" <or false if you just want one big never ending file per container name>
 - name: WATCH_CONTAINERS
     value: "" <CSV of string to look for in container names. Uses 'contains' logic. Doesn't support wildcards. Leave black to get all container logs [also, that's a bit excessive - get a logging strategy!]>
 - name: WATCH_MESSAGE_FILTERS
     value: "" <CSV of string to look for in log messages. Uses 'contains' logic. Doesn't support wildcards. Avoid caputring every output message if you only care about some!>
+
+
+- name: STORAGE_ACCOUNT_NAME
+    value: <what's your storage account name?>
+- name: STORAGE_ACCOUNT_URL_SUFFIX
+    value: blob.core.windows.net <or something different if non standard - i.e. gov cloud>
+- name: STORAGE_ACCOUNT_CONTAINER_NAME
+    value: <the storage account container name to create / use - multiple clusters? Use a different container name for each! Magic!>
 - name: STORAGE_ACCOUNT_KEY
     valueFrom:
     secretKeyRef:

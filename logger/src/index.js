@@ -5,26 +5,46 @@
 
 'use strict';
 
-// Dependencies
-import * as tail from "tail";
-import * as chokidar from "chokidar";
-import * as path from "path";
-import { globby } from "globby";
-import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as util from 'util';
+import * as tail from 'tail';
+import * as chokidar from 'chokidar';
+import { globby } from 'globby';
+import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 
-// Azure Storage Account information and logging settings
+
+//Logging destination
+const logOutputDestination = process.env.LOG_OUTPUT_DESTINATION || "AZURE"; // Can be "AZURE", "LOCAL", or "BOTH"
+const localLogDirectory = process.env.LOCAL_LOG_DIRECTORY || "/kubernetes-logs";
+
+// Azure Storage Account information
 const account = process.env.STORAGE_ACCOUNT_NAME;
 const accountUrl = `https://${account}.${process.env.STORAGE_ACCOUNT_URL_SUFFIX}`;
 const accountKey = process.env.STORAGE_ACCOUNT_KEY;
+
+// Logging settings
 const storeByDate = process.env.STORE_BY_DATE === "true";
 let watchContainers = process.env.WATCH_CONTAINERS?.split(",").filter(el => el != "");
 watchContainers?.forEach(el => el.toLowerCase().trim());
 let filterByMessage = process.env.WATCH_MESSAGE_FILTERS?.split(",").filter(el => el != "");
 filterByMessage?.forEach(el => el.toLowerCase().trim());
 
-// Use StorageSharedKeyCredential with storage account and account key
-const sharedKeyCredential = new StorageSharedKeyCredential(account, accountKey);
-const blobServiceClient = new BlobServiceClient(accountUrl, sharedKeyCredential);
+// Only import and use Azure-related components if needed
+let sharedKeyCredential, blobServiceClient;
+if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+    // Use StorageSharedKeyCredential with storage account and account key
+    sharedKeyCredential = new StorageSharedKeyCredential(account, accountKey);
+    blobServiceClient = new BlobServiceClient(accountUrl, sharedKeyCredential);
+}
+
+// Ensure the local log directory exists
+if (logOutputDestination === "LOCAL" || logOutputDestination === "BOTH") {
+    if (!fs.existsSync(localLogDirectory)) {
+        fs.mkdirSync(localLogDirectory, { recursive: true });
+    }
+}
+
 
 // The target container and containerclient for Azure storage account
 const containerName = process.env.STORAGE_ACCOUNT_CONTAINER_NAME;
@@ -48,24 +68,45 @@ const blobClients = new Object();
 const logBatches = {};
 const batchUploadPeriod = process.env.BATCH_LOG_UPLOAD_TIME_SECONDS && (parseInt(process.env.BATCH_LOG_UPLOAD_TIME_SECONDS) * 1000) || 60000; // 1 minute in milliseconds
 
+// Utility function to append log to a local file
+async function appendToLocalLogFile(fileName, content) {
+    const filePath = path.join(localLogDirectory, fileName);
+    const appendFilePromise = util.promisify(fs.appendFile);
+    await appendFilePromise(filePath, content + '\n');
+}
+
 // Timer function to upload log lines in batches
 async function uploadLogBatch(containerName) {
     const batch = logBatches[containerName];
     if (batch && batch.length > 0) {
-        await ensureBlobAppendClient(containerName);
-        const blockBlobClient = blobClients[containerName];
-        const batchContent = batch.map(({ line }) => line).join('\n');
+        const batchContent = batch.map(({ content }) => content).join('\n') + '\n';
 
-        // Upload the batch content to Azure Blob Storage using writeLogLine
-        blockBlobClient.appendBlock(batchContent, batchContent.length)
-            .then(() => {
-                console.log(`Uploaded batch of ${batch.length} lines for container ${containerName}`);
-                logBatches[containerName].length = 0;
-            })
-            .catch((error) => {
-                console.error('Failed to upload batch:', error);
-                logBatches[containerName].length = 0;
-            });
+        // Azure Blob upload
+        if ((logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') && blobServiceClient) {
+            await ensureBlobAppendClient(containerName);
+            const blockBlobClient = blobClients[containerName];
+            blockBlobClient.appendBlock(batchContent, batchContent.length)
+                .then(() => {
+                    console.log(`Azure Blob: Uploaded batch of ${batch.length} lines for container ${containerName}`);
+                })
+                .catch((error) => {
+                    console.error('Azure Blob: Failed to upload batch:', error);
+                });
+        }
+
+        // Local file system writing
+        if (logOutputDestination === "LOCAL" || logOutputDestination === "BOTH") {
+            const localFileName = `${containerName}.log`;
+            appendToLocalLogFile(localFileName, batchContent)
+                .then(() => {
+                    console.log(`Local File System: Appended ${batch.length} lines for container ${containerName}`);
+                })
+                .catch((error) => {
+                    console.error('Local File System: Failed to append to file:', error);
+                });
+        }
+
+        logBatches[containerName].length = 0;
     }
 }
 
@@ -184,6 +225,27 @@ async function trackFiles() {
     }
 }
 
+// Graceful shutdown handler
+async function gracefulShutdown(signal) {
+    console.log(`Received ${signal}. Graceful shutdown start at ${new Date().toISOString()}`);
+
+    // Attempt to upload all pending log batches
+    try {
+        const uploadPromises = Object.keys(logBatches).map(containerName => {
+            return uploadLogBatch(containerName); // Ensure this function resolves even on failure
+        });
+        await Promise.all(uploadPromises);
+
+        console.log("All log batches have been uploaded.");
+        
+        console.log("Graceful shutdown completed. Exiting.");
+        process.exit(0); // Exit cleanly
+    } catch (error) {
+        console.error("Error during shutdown:", error);
+        process.exit(1); // Exit with error
+    }
+}
+
 async function main() {
     // Setup Azure container
 
@@ -221,3 +283,7 @@ main()
         console.error("Failed to start!");
         console.error(err && err.stack || err);
     });
+
+// Listen for termination signals
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

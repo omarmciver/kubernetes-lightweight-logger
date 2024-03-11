@@ -39,6 +39,10 @@ spec:
         - name: varlibdockercontainers
           mountPath: /var/lib/docker/containers
         env:
+        - name: LOG_OUTPUT_DESTINATION
+          value: AZURE
+		    - name: LOCAL_LOG_DIRECTORY
+          value: /kubernetes-logs
         - name: STORAGE_ACCOUNT_NAME
           value: storageaccountrgmpna925
         - name: STORAGE_ACCOUNT_URL_SUFFIX
