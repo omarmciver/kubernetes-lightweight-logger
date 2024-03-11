@@ -195,15 +195,17 @@ async function trackFile(logFilePath) {
             return;
     }
 
-    // Setup client for Azure storage account
-    let destBlobName = `${containerName}.log`
-    if (storeByDate === true) {
-        destBlobName = `${getDateString()}/${containerName}.log`;
-    }
+    if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+        // Setup client for Azure storage account
+        let destBlobName = `${containerName}.log`
+        if (storeByDate === true) {
+            destBlobName = `${getDateString()}/${containerName}.log`;
+        }
 
-    let blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
-    await blockBlobClient.createIfNotExists();
-    blobClients[containerName] = blockBlobClient;
+        let blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
+        await blockBlobClient.createIfNotExists();
+        blobClients[containerName] = blockBlobClient;
+    }
     logFileTail.on("line", async line => await onLogLine(containerName, line));
 
     // Output tracking info
