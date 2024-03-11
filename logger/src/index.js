@@ -195,13 +195,13 @@ async function trackFile(logFilePath) {
             return;
     }
 
+    let destBlobName = `${containerName}.log`
+    if (storeByDate === true) {
+        destBlobName = `${getDateString()}/${containerName}.log`;
+    }
+
     if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
         // Setup client for Azure storage account
-        let destBlobName = `${containerName}.log`
-        if (storeByDate === true) {
-            destBlobName = `${getDateString()}/${containerName}.log`;
-        }
-
         let blockBlobClient = containerClient.getAppendBlobClient(destBlobName);
         await blockBlobClient.createIfNotExists();
         blobClients[containerName] = blockBlobClient;
@@ -209,7 +209,13 @@ async function trackFile(logFilePath) {
     logFileTail.on("line", async line => await onLogLine(containerName, line));
 
     // Output tracking info
-    console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);
+    if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+        console.log(`Tracking container ${containerName} in file ${logFileName} and streaming to ${destBlobName}`);
+    }
+    if (logOutputDestination === 'LOCAL' || logOutputDestination === 'BOTH') {
+        console.log(`Tracking container ${containerName} in file ${logFileName} and writing to ${localLogDirectory}/${destBlobName}`);
+    }
+
     // Periodically upload log batches
     setInterval(async () => {
         await uploadLogBatch(containerName);
