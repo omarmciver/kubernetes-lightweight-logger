@@ -12,7 +12,7 @@ import * as tail from 'tail';
 import * as chokidar from 'chokidar';
 import { globby } from 'globby';
 import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-blob';
-const hostname = require('os').hostname();
+import { hostname } from 'os';
 
 
 //Logging destination
