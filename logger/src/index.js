@@ -125,7 +125,7 @@ async function trackFile(logFilePath) {
 
     // Handle errors like file not found or file being deleted
     logFileTail.on("error", error => {
-        console.error(`Error watching file ${logFilePath}: ${error.message}`);
+        console.log(`Error watching file ${logFilePath}: ${error.message}`);
         uploadLogBatch(containerName).then(() => {
             delete trackedFiles[logFilePath];
         });
