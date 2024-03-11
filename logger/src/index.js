@@ -25,6 +25,9 @@ const LOG_FILES_GLOB = [
 const BATCH_LOG_UPLOAD_TIME_SECONDS = parseInt(process.env.BATCH_LOG_UPLOAD_TIME_SECONDS) || 60; // Default: 1 minute
 const BATCH_SIZE_THRESHOLD = 50000;
 const CONTAINER_NAME = process.env.STORAGE_ACCOUNT_CONTAINER_NAME;
+const watchContainers = process.env.WATCH_CONTAINERS ? process.env.WATCH_CONTAINERS.split(',') : undefined;
+const filterByMessage = process.env.FILTER_BY_MESSAGE ? process.env.FILTER_BY_MESSAGE.split(',') : undefined;
+
 
 // Azure Storage
 let sharedKeyCredential, blobServiceClient, containerClient;
@@ -51,6 +54,7 @@ if (LOG_OUTPUT_DESTINATION === "LOCAL" || LOG_OUTPUT_DESTINATION === "BOTH") {
 // Maps
 const trackedFiles = {};
 const blobClients = {};
+const logBatches = {};
 
 // Timer
 setInterval(uploadAllLogBatches, BATCH_LOG_UPLOAD_TIME_SECONDS * 1000);
@@ -59,8 +63,8 @@ setInterval(uploadAllLogBatches, BATCH_LOG_UPLOAD_TIME_SECONDS * 1000);
 async function main() {
     console.log(`Logging target: ${LOG_OUTPUT_DESTINATION}`);
     console.log(`Store By Date: ${STORE_BY_DATE}`);
-    console.log(`Watch Containers: ${watchContainers} (${watchContainers?.length})`);
-    console.log(`Message Filters: ${filterByMessage} (${filterByMessage?.length})`);
+    console.log(`Watch Containers Filter: ${watchContainers ?? "No Filter"} (${watchContainers?.length})`);
+    console.log(`Message Filters: ${filterByMessage ?? "No Filter"} (${filterByMessage?.length})`);
 
     await trackInitialFiles();
     watchForNewFiles();
@@ -149,10 +153,11 @@ async function onLogLine(containerName, line) {
 
 // Append log to a local file
 async function appendToLocalLogFile(fileName, content) {
-    const filePath = path.join(LOCAL_LOG_DIRECTORY, fileName);
-    if (!fs.existsSync(filePath)) {
-        fs.mkdirSync(filePath, { recursive: true });
+    const dirPath = path.dirname(path.join(LOCAL_LOG_DIRECTORY, fileName));
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
     }
+    const filePath = path.join(LOCAL_LOG_DIRECTORY, fileName);
     const appendFilePromise = util.promisify(fs.appendFile);
     await appendFilePromise(filePath, content + '\n');
 }
