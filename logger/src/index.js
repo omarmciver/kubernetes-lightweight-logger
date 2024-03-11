@@ -237,7 +237,7 @@ async function gracefulShutdown(signal) {
         await Promise.all(uploadPromises);
 
         console.log("All log batches have been uploaded.");
-        
+
         console.log("Graceful shutdown completed. Exiting.");
         process.exit(0); // Exit cleanly
     } catch (error) {
@@ -249,20 +249,27 @@ async function gracefulShutdown(signal) {
 async function main() {
     // Setup Azure container
 
-    let containerExists = false;
-    let containers = blobServiceClient.listContainers();
-    for await (const container of containers) {
-        if (container.name === containerName) {
-            containerExists = true;
-            break;
+    console.log(`Logging target: ${logOutputDestination}`);
+    if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+        let containerExists = false;
+        let containers = blobServiceClient.listContainers();
+        for await (const container of containers) {
+            if (container.name === containerName) {
+                containerExists = true;
+                break;
+            }
         }
+        containerClient = blobServiceClient.getContainerClient(containerName);
+        if (containerExists === false) {
+            await containerClient.create();
+        }
+        console.log("Azure Storage Account: " + account);
+        console.log("Azure Storage Account Container: " + containerName);
     }
-
-    containerClient = blobServiceClient.getContainerClient(containerName);
-    if (containerExists === false) {
-        await containerClient.create();
+    if (logOutputDestination === 'LOCAL' || logOutputDestination === 'BOTH') {
+        console.log("Local Log Directory: " + localLogDirectory);
     }
-
+    console.log("Store By Date: " + storeByDate);
     console.log("Watch Containers: " + watchContainers + ` (${watchContainers.length})`);
     console.log("Message Filters: " + filterByMessage + ` (${filterByMessage.length})`);
     //
