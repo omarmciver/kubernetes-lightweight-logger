@@ -2,39 +2,52 @@
 
 Based on the great example set by <a target="_blank" href="https://github.com/ashleydavis/kubernetes-log-aggregation-example">Ashley Davis</a>
 
+This microservice is designed to aggregate logs from Kubernetes pods and store them either in Azure Blob Storage, locally, or both. It can be deployed as a Daemonset to ensure that it runs on each node in the cluster.
+
+## Environment Variables Configuration
+
 Here are the env vars required to configure this solution:
 
 ```yaml
 env:
 - name: LOG_OUTPUT_DESTINATION
-    value: "AZURE" <or "LOCAL" or "BOTH" - where do you want the logs to go?>
+  value: "AZURE" # Can be "AZURE", "LOCAL", or "BOTH" - where do you want the logs to go?
 
 - name: LOCAL_LOG_DIRECTORY
-    value: "/kubernetes-logs" <or wherever you want the logs to be saved locally>
-    
-- name: BATCH_LOG_UPLOAD_TIME_SECONDS
-    value: "60" <or the number of seconds before the latest log updates are uploaded to the storage account or saved to the local disk>
-- name: STORE_BY_DATE
-    value: "true" <or false if you just want one big never ending file per container name>
-- name: WATCH_CONTAINERS
-    value: "" <CSV of string to look for in container names. Uses 'contains' logic. Doesn't support wildcards. Leave black to get all container logs [also, that's a bit excessive - get a logging strategy!]>
-- name: WATCH_MESSAGE_FILTERS
-    value: "" <CSV of string to look for in log messages. Uses 'contains' logic. Doesn't support wildcards. Avoid caputring every output message if you only care about some!>
+  value: "/kubernetes-logs" # Or wherever you want the logs to be saved locally
 
+- name: BATCH_LOG_UPLOAD_TIME_SECONDS
+  value: "60" # Number of seconds before the latest log updates are uploaded to the storage account or saved to the local disk
+
+- name: STORE_BY_DATE
+  value: "true" # Set to true if you want to store logs by date, false for one big file per container
+
+- name: WATCH_CONTAINERS
+  value: "" # CSV of strings to look for in container names. Uses 'contains' logic. Leave blank to get all container logs.
+
+- name: WATCH_MESSAGE_FILTERS
+  value: "" # CSV of strings to look for in log messages. Uses 'contains' logic. Avoid capturing every output message if you only care about some!
 
 - name: STORAGE_ACCOUNT_NAME
-    value: <what's your storage account name?>
+  value: <your_storage_account_name>
+
 - name: STORAGE_ACCOUNT_URL_SUFFIX
-    value: blob.core.windows.net <or something different if non standard - i.e. gov cloud>
+  value: blob.core.windows.net # Or something different if non-standard, like gov cloud
+
 - name: STORAGE_ACCOUNT_CONTAINER_NAME
-    value: <the storage account container name to create / use - multiple clusters? Use a different container name for each! Magic!>
+  value: <your_storage_account_container_name> # Use a different container name for each cluster if needed
+
 - name: STORAGE_ACCOUNT_KEY
-    valueFrom:
+  valueFrom:
     secretKeyRef:
-        name: azstoragecreds
-        key: storagekey
-        optional: false
+      name: azstoragecreds
+      key: storagekey
+      optional: false
+
 ```
 
-Use a secret for that last env var. It should be your storage key for the storage account.
-`kubectl create secret generic azstoragecreds --namespace kube-system --from-literal=storagekey=<insertstoragekeyhere>`
+Make sure to create a secret for the STORAGE_ACCOUNT_KEY environment variable. It should be your storage key for the storage account.
+
+`kubectl create secret generic azstoragecreds --namespace kube-system --from-literal=storagekey=<insert_storage_key_here>`
+
+This will ensure secure access to your Azure Blob Storage.
