@@ -32,7 +32,7 @@ filterByMessage?.forEach(el => el.toLowerCase().trim());
 
 // Only import and use Azure-related components if needed
 let sharedKeyCredential, blobServiceClient;
-if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+if ((logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') && account && accountKey && accountUrl) {
     // Use StorageSharedKeyCredential with storage account and account key
     sharedKeyCredential = new StorageSharedKeyCredential(account, accountKey);
     blobServiceClient = new BlobServiceClient(accountUrl, sharedKeyCredential);
@@ -258,7 +258,7 @@ async function main() {
     // Setup Azure container
 
     console.log(`Logging target: ${logOutputDestination}`);
-    if (logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') {
+    if ((logOutputDestination === 'AZURE' || logOutputDestination === 'BOTH') && blobServiceClient && containerName) {
         let containerExists = false;
         let containers = blobServiceClient.listContainers();
         for await (const container of containers) {
@@ -278,8 +278,8 @@ async function main() {
         console.log("Local Log Directory: " + localLogDirectory);
     }
     console.log("Store By Date: " + storeByDate);
-    console.log("Watch Containers: " + watchContainers + ` (${watchContainers.length})`);
-    console.log("Message Filters: " + filterByMessage + ` (${filterByMessage.length})`);
+    console.log("Watch Containers: " + watchContainers + ` (${watchContainers?.length})`);
+    console.log("Message Filters: " + filterByMessage + ` (${filterByMessage?.length})`);
     //
     // Start tracking initial log files.
     //
