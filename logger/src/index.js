@@ -61,6 +61,7 @@ setInterval(uploadAllLogBatches, BATCH_LOG_UPLOAD_TIME_SECONDS * 1000);
 
 // Main function
 async function main() {
+    console.log(`Logger hostname: ${hostname()}`);
     console.log(`Logging target: ${LOG_OUTPUT_DESTINATION}`);
     console.log(`Store By Date: ${STORE_BY_DATE}`);
     console.log(`Watch Containers Filter: ${watchContainers ?? "No Filter"} (${watchContainers?.length})`);
@@ -97,7 +98,7 @@ async function trackFile(logFilePath) {
     const logFileName = path.basename(logFilePath);
     const containerName = logFileName.split("_")[0];
 
-    if (containerName === hostname) {
+    if (containerName === hostname()) {
         return;
     }
 
