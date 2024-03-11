@@ -15,6 +15,7 @@ import { hostname } from 'os';
 
 // Constants
 const LOG_OUTPUT_DESTINATION = process.env.LOG_OUTPUT_DESTINATION || "AZURE"; // Can be "AZURE", "LOCAL", or "BOTH"
+const STORE_BY_DATE = process.env.STORE_BY_DATE === "true"
 const LOCAL_LOG_DIRECTORY = process.env.LOCAL_LOG_DIRECTORY || "/kubernetes-logs";
 const LOG_FILES_DIRECTORY = "/var/log/containers";
 const LOG_FILES_GLOB = [
@@ -57,7 +58,7 @@ setInterval(uploadAllLogBatches, BATCH_LOG_UPLOAD_TIME_SECONDS * 1000);
 // Main function
 async function main() {
     console.log(`Logging target: ${LOG_OUTPUT_DESTINATION}`);
-    console.log(`Store By Date: ${storeByDate}`);
+    console.log(`Store By Date: ${STORE_BY_DATE}`);
     console.log(`Watch Containers: ${watchContainers} (${watchContainers?.length})`);
     console.log(`Message Filters: ${filterByMessage} (${filterByMessage?.length})`);
 
@@ -103,7 +104,7 @@ async function trackFile(logFilePath) {
     }
 
     let destBlobName = `${containerName}.log`
-    if (storeByDate) {
+    if (STORE_BY_DATE) {
         destBlobName = `${getDateString()}/${containerName}.log`;
     }
 
@@ -209,7 +210,7 @@ async function ensureBlobAppendClient(containerName) {
     let blockBlobClient = blobClients[containerName];
 
     let expectedDestBlobName = `${containerName}.log`;
-    if (storeByDate) {
+    if (STORE_BY_DATE) {
         expectedDestBlobName = `${getDateString()}/${containerName}.log`;
     }
 
