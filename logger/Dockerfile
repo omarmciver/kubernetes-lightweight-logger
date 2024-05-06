@@ -1,4 +1,4 @@
-FROM node:21-alpine3.19
+FROM node:21-alpine
 RUN apk update && apk upgrade && apk add --no-cache openssl
 WORKDIR /usr/src/app
 COPY package*.json ./
