@@ -24,6 +24,8 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
   workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * 5' # This is run at 8pm every Friday
 
 env:
   BUILD_VERSION: "${{github.run_number}}"
