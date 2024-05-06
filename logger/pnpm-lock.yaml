@@ -9,19 +9,19 @@ importers:
   .:
     dependencies:
       '@azure/storage-blob':
-        specifier: ^12.17.0
+        specifier: 12.17.0
         version: 12.17.0
       chokidar:
-        specifier: ^3.6.0
+        specifier: 3.6.0
         version: 3.6.0
       cross-env:
-        specifier: ^7.0.3
+        specifier: 7.0.3
         version: 7.0.3
       globby:
-        specifier: ^14.0.1
+        specifier: 14.0.1
         version: 14.0.1
       tail:
-        specifier: ^2.2.6
+        specifier: 2.2.6
         version: 2.2.6
     devDependencies:
       nodemon:
