@@ -27,6 +27,6 @@
     "tail": "^2.2.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.1"
   }
 }
