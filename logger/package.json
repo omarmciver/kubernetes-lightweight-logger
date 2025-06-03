@@ -20,13 +20,13 @@
   },
   "homepage": "https://github.com/ashleydavis/kubernetes-log-aggregation-example#readme",
   "dependencies": {
-    "@azure/storage-blob": "^12.17.0",
-    "chokidar": "^3.6.0",
+    "@azure/storage-blob": "^12.27.0",
+    "chokidar": "^4.0.3",
     "cross-env": "^7.0.3",
-    "globby": "^14.0.1",
+    "globby": "^14.1.0",
     "tail": "^2.2.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.10"
   }
 }
