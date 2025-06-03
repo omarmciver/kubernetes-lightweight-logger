@@ -26,7 +26,12 @@ const BATCH_LOG_UPLOAD_TIME_SECONDS = parseInt(process.env.BATCH_LOG_UPLOAD_TIME
 const BATCH_SIZE_THRESHOLD = 50000;
 const CONTAINER_NAME = process.env.STORAGE_ACCOUNT_CONTAINER_NAME;
 const watchContainers = process.env.WATCH_CONTAINERS ? process.env.WATCH_CONTAINERS.split(',') : undefined;
-const filterByMessage = process.env.FILTER_BY_MESSAGE ? process.env.FILTER_BY_MESSAGE.split(',') : undefined;
+// Environment variable WATCH_MESSAGE_FILTERS is documented in README
+// but the code previously looked for FILTER_BY_MESSAGE. Align with
+// the documentation so message filters work as expected.
+const filterByMessage = process.env.WATCH_MESSAGE_FILTERS
+    ? process.env.WATCH_MESSAGE_FILTERS.split(',')
+    : undefined;
 
 
 // Azure Storage
